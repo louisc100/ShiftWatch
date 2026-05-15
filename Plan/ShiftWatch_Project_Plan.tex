@@ -1,0 +1,1410 @@
+\documentclass[11pt]{article}
+
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath, amssymb}
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{array}
+\usepackage{enumitem}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage{fancyhdr}
+\usepackage{titlesec}
+\usepackage{listings}
+
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue!60!black,
+    urlcolor=blue!60!black,
+    citecolor=blue!60!black
+}
+
+\pagestyle{fancy}
+\fancyhf{}
+\lhead{ShiftWatch Project Plan}
+\rhead{ML Reliability and Distribution Shift Monitoring}
+\cfoot{\thepage}
+
+\setlength{\parskip}{0.6em}
+\setlength{\parindent}{0pt}
+\setlist[itemize]{topsep=0.2em, itemsep=0.25em}
+\setlist[enumerate]{topsep=0.2em, itemsep=0.25em}
+
+\titleformat{\section}{\large\bfseries\color{blue!50!black}}{\thesection}{0.75em}{}
+\titleformat{\subsection}{\normalsize\bfseries\color{blue!35!black}}{\thesubsection}{0.75em}{}
+
+\lstdefinestyle{projectstyle}{
+    basicstyle=\ttfamily\small,
+    backgroundcolor=\color{gray!8},
+    frame=single,
+    breaklines=true,
+    columns=fullflexible
+}
+\lstset{style=projectstyle}
+
+\begin{document}
+
+\begin{titlepage}
+    \centering
+    \vspace*{1.5cm}
+    {\Huge \textbf{ShiftWatch} \par}
+    \vspace{0.5cm}
+    {\Large \textbf{An ML Reliability and Distribution Shift Monitoring Platform}\par}
+    \vspace{0.5cm}
+    {\large Project Plan and Technical Blueprint\par}
+    \vfill
+    \begin{tabular}{rl}
+        \textbf{Project Type:} & Full-stack data science / ML monitoring system \\
+        \textbf{Primary Domain:} & Urban mobility demand forecasting \\
+        \textbf{Core Methods:} & Forecasting, drift detection, anomaly detection, regime modeling \\
+        \textbf{Advanced Layer:} & Optimal transport, statistical tests, HMMs, uncertainty quantification \\
+        \textbf{Product Output:} & FastAPI backend + interactive dashboard \\
+    \end{tabular}
+    \vfill
+    {\large \today\par}
+\end{titlepage}
+
+\tableofcontents
+\newpage
+
+\section{Executive Summary}
+
+\textbf{ShiftWatch} is a full-stack machine learning monitoring platform that detects when real-world data begins to behave differently from the data used to train a forecasting model. The platform focuses on urban mobility demand, such as taxi or bike-share trips, where demand patterns can change because of holidays, weather, major events, remote work, public transit disruptions, or long-term neighborhood changes.
+
+The main product idea is simple:
+
+\begin{quote}
+    \textit{A forecasting model may still output predictions even when the world has changed. ShiftWatch monitors whether the current data distribution still resembles the historical baseline, detects anomalies, estimates prediction reliability, and visualizes the changes through an interactive dashboard.}
+\end{quote}
+
+The project is designed to be attractive for technology recruiters because it combines:
+
+\begin{itemize}
+    \item a clear real-world problem,
+    \item public data,
+    \item end-to-end data engineering,
+    \item machine learning and statistics,
+    \item strong interactive visualizations,
+    \item backend API design,
+    \item business and social impact,
+    \item advanced mathematical ideas underneath the product.
+\end{itemize}
+
+The surface-level product is easy to understand: \textit{monitor demand forecasts and warn when the data changes}. The deeper technical layer is more advanced: \textit{model data as time-indexed probability distributions and detect structural shifts using statistical distances, optimal transport, sequential testing, hidden regimes, and uncertainty-aware forecasting}.
+
+\section{Project Identity}
+
+\subsection{Project Name}
+
+\textbf{ShiftWatch}
+
+\subsection{Subtitle}
+
+\begin{quote}
+    \textit{An ML reliability and distribution shift monitoring platform for urban mobility forecasting.}
+\end{quote}
+
+Here, \textbf{ML} means \textbf{machine learning}.
+
+\subsection{One-Liner}
+
+\begin{quote}
+    ShiftWatch detects when urban mobility demand patterns shift away from historical training behavior, helping identify anomalies, hidden regime changes, and periods where forecasting models may become unreliable.
+\end{quote}
+
+\subsection{Recruiter-Friendly Description}
+
+\begin{quote}
+    I built a full-stack machine learning monitoring dashboard that tracks distribution shift, demand anomalies, and model reliability risks in public urban mobility data using forecasting models, statistical drift metrics, and interactive geospatial visualizations.
+\end{quote}
+
+\subsection{Technical Description}
+
+\begin{quote}
+    ShiftWatch models incoming data as a time-indexed sequence of probability distributions $P_t$, compares current windows against a baseline distribution $P_0$, and combines drift metrics, probabilistic forecasting, anomaly detection, and hidden regime modeling to monitor whether a deployed forecasting model remains reliable.
+\end{quote}
+
+\section{Motivation}
+
+Modern machine learning systems are usually trained on historical data. However, real-world systems are not static. User behavior changes, environments change, events happen, and the distribution of incoming data can slowly or suddenly drift away from the training period.
+
+In production machine learning, this creates a serious problem:
+
+\begin{quote}
+    \textit{A model can continue producing predictions even when those predictions are no longer trustworthy.}
+\end{quote}
+
+For example, an urban mobility forecasting model may be trained on historical taxi demand. During normal periods, the model may work well. But the following events can break normal demand patterns:
+
+\begin{itemize}
+    \item public holidays,
+    \item concerts or sports events,
+    \item extreme weather,
+    \item public transit disruptions,
+    \item changes in commuting behavior,
+    \item airport disruptions,
+    \item neighborhood-level demographic or commercial changes.
+\end{itemize}
+
+A normal forecasting dashboard may only show predicted demand. ShiftWatch goes further by asking:
+
+\begin{quote}
+    \textit{Should we still trust this forecast under the current data environment?}
+\end{quote}
+
+This is the central motivation of the project.
+
+\section{Real-World Examples}
+
+\subsection{Example 1: Ride-Hailing Demand Forecasting}
+
+A ride-hailing platform needs to forecast demand across city zones so it can allocate drivers efficiently. The model was trained on historical demand patterns. However, a major concert causes a sudden demand spike near a stadium. ShiftWatch detects that the current demand distribution differs sharply from baseline behavior and raises a high-drift alert.
+
+\subsection{Example 2: Public Transit Disruption}
+
+A subway delay causes commuters to switch to taxis or bike-share services. Demand shifts from normal commute corridors into nearby taxi zones. A standard model may underpredict demand because the disruption is unusual. ShiftWatch detects both geospatial drift and residual anomalies.
+
+\subsection{Example 3: Long-Term Remote Work Shift}
+
+Suppose weekday downtown commute demand gradually decreases over several months, while residential neighborhood demand increases. This is not a one-day anomaly but a structural distribution shift. ShiftWatch can track long-term changes by comparing rolling time windows against the original baseline period.
+
+\subsection{Example 4: Model Reliability Risk}
+
+The forecasting model may still produce point predictions, but uncertainty increases and prediction residuals become abnormal. ShiftWatch combines drift score, uncertainty score, anomaly score, and recent prediction error into a single model reliability score.
+
+\section{Core Problem and Research Question}
+
+\subsection{Main Problem}
+
+Machine learning forecasting models can fail silently when incoming data no longer resembles the training data. The challenge is to detect this change early, explain what changed, and present the information in a form that users can understand.
+
+\subsection{Main Question}
+
+\begin{quote}
+    \textbf{Can we build an interactive monitoring system that detects distribution shift, demand anomalies, and model reliability risks before forecasting performance degrades severely?}
+\end{quote}
+
+\subsection{Subquestions}
+
+\begin{enumerate}
+    \item Is the current data distribution significantly different from the baseline training period?
+    \item Which features or locations are responsible for the shift?
+    \item Is the shift temporary, seasonal, anomalous, or structural?
+    \item Is the forecasting model becoming less reliable?
+    \item Can the shift be explained clearly using visualizations and interpretable metrics?
+\end{enumerate}
+
+\section{Brief Answer and Platform Concept}
+
+The answer is to treat data as an evolving distribution.
+
+At each time window $t$, the system observes a sample:
+
+\[
+    X_t = \{x_{t,1}, x_{t,2}, \ldots, x_{t,n_t}\}.
+\]
+
+This sample is interpreted as coming from a distribution:
+
+\[
+    X_t \sim P_t.
+\]
+
+The historical reference or training period is represented by a baseline distribution:
+
+\[
+    X_0 \sim P_0.
+\]
+
+If the current distribution $P_t$ is close to $P_0$, the model environment is considered stable. If the distance
+
+\[
+    d(P_t, P_0)
+\]
+
+becomes large, the system raises a drift warning.
+
+ShiftWatch then combines this distributional monitoring with forecasting residuals, anomaly detection, and hidden regime detection. The result is a dashboard that answers:
+
+\begin{itemize}
+    \item What is expected to happen?
+    \item What actually happened?
+    \item How unusual is the current behavior?
+    \item Which features changed?
+    \item How reliable is the model right now?
+\end{itemize}
+
+\section{Domain Choice: Urban Mobility Demand}
+
+The recommended primary domain is \textbf{urban mobility demand monitoring}. This domain is strong because it is visual, public-data friendly, and understandable to both technical and non-technical audiences.
+
+\subsection{Why Urban Mobility Works Well}
+
+\begin{longtable}{p{0.27\textwidth}p{0.63\textwidth}}
+\toprule
+\textbf{Criterion} & \textbf{Why It Works} \\
+\midrule
+Real-world problem & Demand forecasting affects transportation planning, logistics, ride-hailing, and city operations. \\
+Public data & Taxi, bike-share, and city mobility datasets are publicly available. \\
+Strong visuals & Maps, heatmaps, timelines, zone-level charts, and anomaly plots are naturally engaging. \\
+ML/statistics & Forecasting, anomaly detection, drift detection, clustering, and uncertainty estimation all fit naturally. \\
+Business impact & Better demand forecasts can improve fleet allocation, pricing, staffing, and operations. \\
+Social impact & Mobility monitoring can support accessibility, congestion analysis, and city planning. \\
+Recruiter appeal & The final result looks like a real analytics product, not just a notebook. \\
+\bottomrule
+\end{longtable}
+
+\subsection{Suggested Public Data Sources}
+
+Potential datasets include:
+
+\begin{itemize}
+    \item NYC Taxi and Limousine Commission trip record data: \url{https://www.nyc.gov/site/tlc/about/tlc-trip-record-data.page}
+    \item NYC TLC Trip Record Data on AWS Open Data: \url{https://registry.opendata.aws/nyc-tlc-trip-records-pds/}
+    \item Chicago Taxi Trips data portal: \url{https://data.cityofchicago.org/Transportation/Taxi-Trips-2024-/ajtu-isnz}
+    \item Citi Bike system data: \url{https://citibikenyc.com/system-data}
+\end{itemize}
+
+For the first version, NYC taxi data is likely the best choice because it includes pickup and drop-off times, trip distances, fare information, and zone-level location identifiers. The taxi zone geometry can be used for city-level maps.
+
+\section{High-Level System Architecture}
+
+The project follows this architecture:
+
+\begin{lstlisting}
+Data Source
+    -> ETL Pipeline
+    -> Feature Engineering
+    -> ML / Statistical Models
+    -> Prediction and Monitoring Engine
+    -> FastAPI Backend
+    -> Interactive Dashboard
+\end{lstlisting}
+
+Mapped specifically to ShiftWatch:
+
+\begin{lstlisting}
+Public Urban Mobility Data
+    -> Raw trip ingestion
+    -> Cleaning and aggregation
+    -> Zone-time feature engineering
+    -> Forecasting, drift detection, anomaly detection, regime modeling
+    -> Reliability and alert engine
+    -> FastAPI endpoints
+    -> Interactive dashboard with maps, timelines, and alerts
+\end{lstlisting}
+
+\section{Core Features}
+
+\subsection{Feature 1: Demand Forecasting}
+
+ShiftWatch forecasts future mobility demand by zone and time window.
+
+Example output:
+
+\begin{quote}
+    Predicted taxi demand in Zone 142 from 5 PM to 6 PM: 312 trips. Prediction interval: $[270, 365]$.
+\end{quote}
+
+Possible model choices:
+
+\begin{itemize}
+    \item seasonal naive baseline,
+    \item linear regression with lag features,
+    \item random forest,
+    \item XGBoost or LightGBM,
+    \item SARIMA or exponential smoothing,
+    \item Bayesian time-series model,
+    \item neural sequence model for advanced extension.
+\end{itemize}
+
+Recommended MVP choice:
+
+\begin{quote}
+    Seasonal baseline + XGBoost or LightGBM + bootstrap prediction intervals.
+\end{quote}
+
+\subsection{Feature 2: Distribution Shift Detection}
+
+The platform compares current data windows against a baseline reference window.
+
+Example output:
+
+\begin{quote}
+    Current demand behavior is significantly different from the baseline. Main contributors: pickup zone distribution, hour-of-day distribution, average trip distance, and airport trip frequency.
+\end{quote}
+
+Possible drift metrics:
+
+\begin{itemize}
+    \item Wasserstein distance,
+    \item Jensen-Shannon divergence,
+    \item Kolmogorov-Smirnov test,
+    \item Population Stability Index,
+    \item Maximum Mean Discrepancy,
+    \item feature-level standardized mean differences.
+\end{itemize}
+
+\subsection{Feature 3: Anomaly Detection}
+
+The platform detects unusual demand spikes or collapses.
+
+For a forecast $\hat{y}_t$ with uncertainty estimate $\hat{\sigma}_t$, define an anomaly score:
+
+\[
+    A_t = \frac{|y_t - \hat{y}_t|}{\hat{\sigma}_t}.
+\]
+
+Large values of $A_t$ indicate observations that are surprising relative to the model's expectation.
+
+Example output:
+
+\begin{quote}
+    Zone 234 has unusually high demand: 3.1 standard deviations above expected demand.
+\end{quote}
+
+\subsection{Feature 4: Hidden Regime Detection}
+
+ShiftWatch can classify time windows into hidden regimes such as:
+
+\begin{itemize}
+    \item normal weekday commute,
+    \item weekend nightlife,
+    \item low-demand holiday,
+    \item high-demand event,
+    \item airport surge,
+    \item anomalous disruption.
+\end{itemize}
+
+A Hidden Markov Model can be used:
+
+\[
+    Z_t \in \{1, 2, \ldots, K\},
+\]
+
+where $Z_t$ is the hidden regime at time $t$. Observed features satisfy:
+
+\[
+    X_t \mid Z_t = k \sim F_k.
+\]
+
+The dashboard can show a regime probability timeline:
+
+\begin{quote}
+    Normal regime: 12\%, high-demand regime: 73\%, anomalous regime: 15\%.
+\end{quote}
+
+\subsection{Feature 5: Model Reliability Score}
+
+The model reliability score summarizes whether the forecasting model should be trusted under current conditions.
+
+A possible score is:
+
+\[
+    R_t = 100 - \left( w_1 D_t + w_2 U_t + w_3 E_t + w_4 A_t \right),
+\]
+
+where:
+
+\begin{itemize}
+    \item $D_t$ is the drift score,
+    \item $U_t$ is the uncertainty score,
+    \item $E_t$ is recent prediction error,
+    \item $A_t$ is the anomaly score,
+    \item $w_1,w_2,w_3,w_4$ are weights.
+\end{itemize}
+
+Example output:
+
+\begin{quote}
+    Model reliability: Medium. Reason: strong feature drift in pickup zone distribution and elevated forecast residuals.
+\end{quote}
+
+\subsection{Feature 6: Drift Explanation Panel}
+
+When drift is detected, the platform should explain why.
+
+Example output:
+
+\begin{enumerate}
+    \item Pickup zone distribution changed.
+    \item Nighttime demand increased.
+    \item Average trip distance increased.
+    \item Airport trips decreased.
+\end{enumerate}
+
+Possible explanation methods:
+
+\begin{itemize}
+    \item feature-level drift metrics,
+    \item feature importance for prediction error,
+    \item SHAP values for forecasting model,
+    \item zone-level drift heatmaps,
+    \item cluster movement in latent space.
+\end{itemize}
+
+\section{Deep Mathematical and Statistical Layer}
+
+\subsection{Distribution Shift as Probability Measure Evolution}
+
+At each time window $t$, data is viewed as a sample from a probability distribution:
+
+\[
+    X_t \sim P_t.
+\]
+
+In a stable environment:
+
+\[
+    P_t \approx P_0.
+\]
+
+Under distribution shift:
+
+\[
+    P_t \neq P_0.
+\]
+
+The monitoring problem becomes estimating a distance or discrepancy:
+
+\[
+    d(P_t, P_0),
+\]
+
+and deciding whether it is large enough to indicate meaningful change.
+
+\subsection{Wasserstein Distance and Optimal Transport}
+
+The Wasserstein distance measures how much work is required to transform one distribution into another. In one dimension, the first Wasserstein distance can be written as:
+
+\[
+    W_1(P,Q) = \int_0^1 \left|F_P^{-1}(u) - F_Q^{-1}(u)\right|du,
+\]
+
+where $F_P^{-1}$ and $F_Q^{-1}$ are quantile functions.
+
+Interpretation:
+
+\begin{quote}
+    How much effort is needed to move the baseline distribution into the current distribution?
+\end{quote}
+
+This is useful for mobility data because geographic demand may shift from one region to another. Wasserstein distance can capture the geometry of this movement more naturally than simple bin-by-bin comparison.
+
+\subsection{KL Divergence and Jensen-Shannon Divergence}
+
+KL divergence is:
+
+\[
+    D_{\mathrm{KL}}(P\|Q) = \int p(x)\log\frac{p(x)}{q(x)}dx.
+\]
+
+It measures information loss when $Q$ is used to approximate $P$. However, KL divergence can be unstable when distributions have limited overlap. Jensen-Shannon divergence is often more stable:
+
+\[
+    D_{\mathrm{JS}}(P,Q) = \frac{1}{2}D_{\mathrm{KL}}(P\|M) + \frac{1}{2}D_{\mathrm{KL}}(Q\|M),
+\]
+
+where
+
+\[
+    M = \frac{1}{2}(P+Q).
+\]
+
+This is useful for categorical and binned features such as hour of day, zone, payment type, or weekday/weekend indicators.
+
+\subsection{Maximum Mean Discrepancy}
+
+Maximum Mean Discrepancy compares distributions through kernel embeddings:
+
+\[
+    \mathrm{MMD}^2(P,Q) =
+    \mathbb{E}_{X,X'\sim P}[k(X,X')]
+    + \mathbb{E}_{Y,Y'\sim Q}[k(Y,Y')]
+    - 2\mathbb{E}_{X\sim P,Y\sim Q}[k(X,Y)].
+\]
+
+Interpretation:
+
+\begin{quote}
+    MMD checks whether two samples look different after being mapped into a rich feature space.
+\end{quote}
+
+MMD is useful for multivariate drift detection.
+
+\subsection{Sequential Change Detection}
+
+ShiftWatch should not only detect that something changed. It should also estimate when the change began.
+
+A classical CUSUM statistic is:
+
+\[
+    S_t = \max(0, S_{t-1} + x_t - \mu_0 - k).
+\]
+
+If
+
+\[
+    S_t > h,
+\]
+
+an alarm is triggered.
+
+Interpretation:
+
+\begin{quote}
+    Small suspicious deviations accumulate over time until there is enough evidence of a real shift.
+\end{quote}
+
+This is useful for production-style monitoring because it can detect gradual drift before performance collapse.
+
+\subsection{Hidden Markov Models}
+
+A Hidden Markov Model represents the system as switching between latent regimes.
+
+\[
+    Z_t \sim \text{Markov transition},
+\]
+
+\[
+    X_t \mid Z_t = k \sim F_k.
+\]
+
+For urban mobility, the hidden states may correspond to commute behavior, nightlife behavior, holiday behavior, event-driven behavior, or disruption behavior.
+
+The dashboard can display:
+
+\begin{itemize}
+    \item most likely regime over time,
+    \item posterior probability of each regime,
+    \item state transition matrix,
+    \item examples of days or hours belonging to each regime.
+\end{itemize}
+
+\subsection{Bayesian or Bootstrap Uncertainty}
+
+A forecasting system should not only output a point estimate $\hat{y}_t$. It should estimate uncertainty:
+
+\[
+    p(y_t \mid \mathcal{D}).
+\]
+
+The dashboard can display prediction intervals:
+
+\[
+    \hat{y}_t \pm 1.96\hat{\sigma}_t.
+\]
+
+This is important because model reliability is not only about accuracy. It is also about confidence and calibration.
+
+\subsection{Embedding Drift}
+
+Each time window can be transformed into a latent representation:
+
+\[
+    z_t = \phi(X_t),
+\]
+
+where $\phi$ may be PCA, UMAP, an autoencoder, or a vector of summary statistics.
+
+The dashboard can then visualize points $z_t$ in two dimensions. Normal days should cluster together. Holidays, disruptions, and event days should appear far from the normal cluster.
+
+This creates a visually compelling ``latent behavior map'' of the city.
+
+\section{Data Pipeline}
+
+\subsection{Raw Data}
+
+The raw data may contain:
+
+\begin{itemize}
+    \item pickup timestamp,
+    \item drop-off timestamp,
+    \item pickup zone,
+    \item drop-off zone,
+    \item trip distance,
+    \item fare amount,
+    \item passenger count,
+    \item payment type,
+    \item rate code,
+    \item vendor ID.
+\end{itemize}
+
+\subsection{ETL Pipeline}
+
+The ETL pipeline should:
+
+\begin{enumerate}
+    \item load raw trip data,
+    \item filter invalid records,
+    \item parse timestamps,
+    \item remove impossible or extreme values,
+    \item aggregate trips by time window and zone,
+    \item join zone geometry for maps,
+    \item save processed datasets.
+\end{enumerate}
+
+Recommended aggregation levels:
+
+\begin{itemize}
+    \item hourly demand by pickup zone,
+    \item daily demand by pickup zone,
+    \item city-wide hourly demand,
+    \item zone-level summary statistics.
+\end{itemize}
+
+\subsection{Feature Engineering}
+
+Possible features:
+
+\begin{itemize}
+    \item demand count by zone and hour,
+    \item lagged demand: $y_{t-1}$, $y_{t-24}$, $y_{t-168}$,
+    \item rolling averages,
+    \item rolling standard deviations,
+    \item hour of day,
+    \item day of week,
+    \item weekend indicator,
+    \item holiday indicator,
+    \item average trip distance,
+    \item average fare,
+    \item pickup/drop-off imbalance,
+    \item zone-level spatial features,
+    \item airport indicator,
+    \item borough or region indicator.
+\end{itemize}
+
+\section{Modeling Modules}
+
+\subsection{Forecasting Module}
+
+Goal:
+
+\begin{quote}
+    Predict future demand $y_{t+h}$ for a zone or city-wide time series.
+\end{quote}
+
+Suggested progression:
+
+\begin{enumerate}
+    \item seasonal naive model as baseline,
+    \item linear regression with lag features,
+    \item XGBoost or LightGBM,
+    \item uncertainty intervals through bootstrap residuals,
+    \item optional Bayesian model for advanced extension.
+\end{enumerate}
+
+Evaluation metrics:
+
+\begin{itemize}
+    \item MAE,
+    \item RMSE,
+    \item MAPE or sMAPE,
+    \item prediction interval coverage,
+    \item calibration of uncertainty intervals.
+\end{itemize}
+
+\subsection{Drift Detection Module}
+
+Goal:
+
+\begin{quote}
+    Compare current window $P_t$ with baseline window $P_0$.
+\end{quote}
+
+Feature-level drift:
+
+\begin{itemize}
+    \item KS test for continuous features,
+    \item PSI for binned features,
+    \item Jensen-Shannon divergence for categorical distributions,
+    \item Wasserstein distance for continuous or spatial distributions.
+\end{itemize}
+
+Global drift score:
+
+\[
+    D_t = \sum_{j=1}^p \alpha_j d_j(P_{t,j}, P_{0,j}),
+\]
+
+where $d_j$ is the feature-level drift metric for feature $j$.
+
+\subsection{Anomaly Detection Module}
+
+Goal:
+
+\begin{quote}
+    Detect time-zone combinations where observed demand is unusually far from predicted demand.
+\end{quote}
+
+Residual:
+
+\[
+    e_t = y_t - \hat{y}_t.
+\]
+
+Standardized anomaly score:
+
+\[
+    A_t = \frac{|e_t|}{\hat{\sigma}_t}.
+\]
+
+Alert rule:
+
+\[
+    A_t > \tau.
+\]
+
+For example, $\tau=3$ corresponds to a three-standard-deviation warning rule.
+
+\subsection{Regime Detection Module}
+
+Goal:
+
+\begin{quote}
+    Identify latent states of city behavior.
+\end{quote}
+
+Possible approaches:
+
+\begin{itemize}
+    \item K-means clustering on daily profiles,
+    \item Gaussian mixture models,
+    \item Hidden Markov Models,
+    \item Bayesian change point detection as an advanced extension.
+\end{itemize}
+
+\subsection{Reliability Engine}
+
+The reliability engine combines drift, uncertainty, error, and anomaly scores into a product-friendly health metric.
+
+Possible formula:
+
+\[
+    R_t = \max\left(0, 100 - (w_1 D_t + w_2 U_t + w_3 E_t + w_4 A_t)\right).
+\]
+
+Interpretation:
+
+\begin{itemize}
+    \item $R_t \geq 80$: stable,
+    \item $60 \leq R_t < 80$: warning,
+    \item $R_t < 60$: critical.
+\end{itemize}
+
+\section{FastAPI Backend}
+
+The backend exposes model outputs through clean API endpoints.
+
+Suggested endpoints:
+
+\begin{lstlisting}
+GET /health
+GET /forecast?zone_id=...&horizon=...
+GET /drift?window=...
+GET /anomalies?date=...
+GET /regimes?start=...&end=...
+GET /reliability?zone_id=...
+GET /features/drift-contributors?window=...
+\end{lstlisting}
+
+Example response for \texttt{/reliability}:
+
+\begin{lstlisting}
+{
+  "zone_id": 142,
+  "timestamp": "2025-03-14T18:00:00",
+  "reliability_score": 68.4,
+  "status": "warning",
+  "main_reasons": [
+    "pickup zone distribution drift",
+    "elevated forecast residuals",
+    "higher-than-usual evening demand"
+  ]
+}
+\end{lstlisting}
+
+\section{Interactive Dashboard}
+
+\subsection{Page 1: Executive Overview}
+
+Purpose:
+
+\begin{quote}
+    Let a viewer understand the system status in ten seconds.
+\end{quote}
+
+Main cards:
+
+\begin{itemize}
+    \item current status: Stable / Warning / Critical,
+    \item global drift score,
+    \item model reliability score,
+    \item number of active anomaly zones,
+    \item current detected regime,
+    \item most affected feature.
+\end{itemize}
+
+Example:
+
+\begin{lstlisting}
+Status: Warning
+Global drift score: 0.72
+Model reliability: 68 / 100
+Current regime: High-demand event
+Active anomaly zones: 4
+Main contributor: pickup zone distribution
+\end{lstlisting}
+
+\subsection{Page 2: Demand Forecasting}
+
+Visuals:
+
+\begin{itemize}
+    \item actual vs predicted demand,
+    \item prediction intervals,
+    \item future demand heatmap,
+    \item zone selector,
+    \item model error summary.
+\end{itemize}
+
+\subsection{Page 3: Distribution Drift Monitor}
+
+Visuals:
+
+\begin{itemize}
+    \item drift score timeline,
+    \item baseline vs current feature distributions,
+    \item feature-level drift ranking,
+    \item Wasserstein distance over time,
+    \item categorical distribution comparison.
+\end{itemize}
+
+\subsection{Page 4: Geospatial Drift Map}
+
+Visuals:
+
+\begin{itemize}
+    \item zone-level demand heatmap,
+    \item drift severity by zone,
+    \item anomaly markers,
+    \item baseline demand map vs current demand map.
+\end{itemize}
+
+This is one of the most important pages because it makes the project visually impressive.
+
+\subsection{Page 5: Anomaly Detection}
+
+Visuals:
+
+\begin{itemize}
+    \item anomaly timeline,
+    \item ranked anomaly table,
+    \item observed vs expected demand,
+    \item zone-level anomaly heatmap.
+\end{itemize}
+
+\subsection{Page 6: Regime Detection}
+
+Visuals:
+
+\begin{itemize}
+    \item HMM state probability timeline,
+    \item colored regime bands,
+    \item transition matrix,
+    \item representative examples of each regime.
+\end{itemize}
+
+\subsection{Page 7: Latent Behavior Explorer}
+
+Visuals:
+
+\begin{itemize}
+    \item PCA or UMAP projection of time windows,
+    \item points colored by regime,
+    \item points sized by drift score,
+    \item tooltips showing date, demand, regime, and reliability score.
+\end{itemize}
+
+Interpretation:
+
+\begin{quote}
+    Normal weekdays cluster together. Holidays, disruptions, and event days appear as separate regions in latent space.
+\end{quote}
+
+\section{Technology Stack}
+
+\subsection{Core Stack}
+
+\begin{longtable}{p{0.25\textwidth}p{0.63\textwidth}}
+\toprule
+\textbf{Layer} & \textbf{Recommended Tools} \\
+\midrule
+Data processing & Python, Pandas, Polars, NumPy \\
+Modeling & scikit-learn, XGBoost, LightGBM, statsmodels \\
+Drift detection & SciPy, POT, custom metrics \\
+Regime modeling & hmmlearn, scikit-learn, custom HMM implementation \\
+Backend & FastAPI, Pydantic, Uvicorn \\
+Dashboard & Streamlit, Plotly, or React + Plotly \\
+Database & SQLite for MVP, PostgreSQL for advanced version \\
+Deployment & Docker, Render, Railway, Fly.io, or Streamlit Cloud \\
+Testing & pytest \\
+Version control & Git and GitHub \\
+\bottomrule
+\end{longtable}
+
+\subsection{Recommended Dashboard Choice}
+
+For speed and portfolio quality, start with \textbf{Streamlit + Plotly}. This allows fast iteration and strong visuals. Later, if you want a more software-engineering-heavy project, migrate the dashboard to React.
+
+\section{Repository Structure}
+
+A clean repository structure:
+
+\begin{lstlisting}
+shiftwatch/
+|
+|-- README.md
+|-- requirements.txt
+|-- pyproject.toml
+|-- docker-compose.yml
+|
+|-- data/
+|   |-- raw/
+|   |-- processed/
+|   |-- samples/
+|
+|-- notebooks/
+|   |-- 01_eda.ipynb
+|   |-- 02_feature_engineering.ipynb
+|   |-- 03_forecasting.ipynb
+|   |-- 04_drift_analysis.ipynb
+|
+|-- src/
+|   |-- ingestion/
+|   |   |-- load_data.py
+|   |-- etl/
+|   |   |-- preprocess.py
+|   |-- features/
+|   |   |-- build_features.py
+|   |-- models/
+|   |   |-- forecasting.py
+|   |   |-- anomaly.py
+|   |   |-- drift.py
+|   |   |-- regime.py
+|   |-- engine/
+|   |   |-- monitoring_engine.py
+|   |-- utils/
+|       |-- config.py
+|
+|-- api/
+|   |-- main.py
+|   |-- routes/
+|       |-- forecast.py
+|       |-- drift.py
+|       |-- anomalies.py
+|       |-- regimes.py
+|       |-- reliability.py
+|
+|-- dashboard/
+|   |-- app.py
+|
+|-- reports/
+|   |-- architecture.md
+|   |-- methodology.md
+|   |-- results.md
+|
+|-- tests/
+    |-- test_features.py
+    |-- test_drift.py
+    |-- test_api.py
+\end{lstlisting}
+
+\section{Implementation Roadmap}
+
+\subsection{Phase 0: Project Setup}
+
+Deliverables:
+
+\begin{itemize}
+    \item GitHub repository,
+    \item virtual environment,
+    \item project structure,
+    \item README skeleton,
+    \item initial architecture diagram.
+\end{itemize}
+
+\subsection{Phase 1: Data Ingestion and Cleaning}
+
+Deliverables:
+
+\begin{itemize}
+    \item download or sample public mobility data,
+    \item load raw trip records,
+    \item clean timestamps and invalid values,
+    \item aggregate by zone and time,
+    \item create processed dataset.
+\end{itemize}
+
+\subsection{Phase 2: Exploratory Data Analysis}
+
+Deliverables:
+
+\begin{itemize}
+    \item demand by hour,
+    \item demand by day of week,
+    \item demand by zone,
+    \item trip distance distribution,
+    \item fare distribution,
+    \item initial maps and heatmaps.
+\end{itemize}
+
+\subsection{Phase 3: Forecasting Model}
+
+Deliverables:
+
+\begin{itemize}
+    \item baseline seasonal forecasting model,
+    \item XGBoost or LightGBM model,
+    \item train/test split by time,
+    \item evaluation metrics,
+    \item prediction interval approximation.
+\end{itemize}
+
+\subsection{Phase 4: Drift Detection}
+
+Deliverables:
+
+\begin{itemize}
+    \item baseline reference window,
+    \item rolling current windows,
+    \item feature-level drift scores,
+    \item global drift score,
+    \item drift timeline visualizations.
+\end{itemize}
+
+\subsection{Phase 5: Anomaly Detection}
+
+Deliverables:
+
+\begin{itemize}
+    \item forecast residuals,
+    \item standardized anomaly scores,
+    \item anomaly thresholds,
+    \item ranked anomaly table,
+    \item anomaly heatmap.
+\end{itemize}
+
+\subsection{Phase 6: Reliability Engine}
+
+Deliverables:
+
+\begin{itemize}
+    \item reliability score formula,
+    \item stable/warning/critical classification,
+    \item explanation rules,
+    \item summary JSON output.
+\end{itemize}
+
+\subsection{Phase 7: FastAPI Backend}
+
+Deliverables:
+
+\begin{itemize}
+    \item API routes,
+    \item Pydantic schemas,
+    \item model output serialization,
+    \item local API documentation,
+    \item basic endpoint tests.
+\end{itemize}
+
+\subsection{Phase 8: Dashboard MVP}
+
+Deliverables:
+
+\begin{itemize}
+    \item executive overview page,
+    \item forecast page,
+    \item drift monitor page,
+    \item anomaly page,
+    \item geospatial heatmap.
+\end{itemize}
+
+\subsection{Phase 9: Advanced Modeling}
+
+Deliverables:
+
+\begin{itemize}
+    \item HMM regime detection,
+    \item regime timeline,
+    \item latent space visualization,
+    \item transition matrix,
+    \item drift explanation panel.
+\end{itemize}
+
+\subsection{Phase 10: Deployment and Polish}
+
+Deliverables:
+
+\begin{itemize}
+    \item deployed dashboard,
+    \item Dockerfile,
+    \item polished README,
+    \item methodology report,
+    \item screenshots or GIF demo,
+    \item resume bullets,
+    \item architecture diagram.
+\end{itemize}
+
+\section{Minimum Viable Product}
+
+The MVP should include:
+
+\begin{enumerate}
+    \item Public mobility data ingestion.
+    \item Cleaned and aggregated zone-time demand dataset.
+    \item Demand forecasting model.
+    \item Drift detection using Wasserstein distance, KS tests, and PSI.
+    \item Forecast residual anomaly detection.
+    \item Model reliability score.
+    \item FastAPI backend.
+    \item Streamlit or React dashboard.
+    \item Executive overview page.
+    \item Forecasting and drift visualization pages.
+\end{enumerate}
+
+This version is already resume-worthy.
+
+\section{Advanced Extensions}
+
+After the MVP, possible extensions include:
+
+\begin{itemize}
+    \item HMM-based hidden regime detection,
+    \item Bayesian uncertainty intervals,
+    \item online change point detection,
+    \item embedding drift monitoring,
+    \item alert simulation system,
+    \item retraining recommendation engine,
+    \item database-backed dashboard,
+    \item Dockerized deployment,
+    \item CI/CD with GitHub Actions,
+    \item React frontend for a more polished product feel.
+\end{itemize}
+
+\section{Evaluation Plan}
+
+\subsection{Forecasting Evaluation}
+
+Use time-based validation, not random splits. Metrics:
+
+\begin{itemize}
+    \item MAE,
+    \item RMSE,
+    \item sMAPE,
+    \item prediction interval coverage,
+    \item reliability score behavior during unusual periods.
+\end{itemize}
+
+\subsection{Drift Detection Evaluation}
+
+Evaluation can include:
+
+\begin{itemize}
+    \item known holiday periods,
+    \item manually identified event periods,
+    \item synthetic drift injection,
+    \item comparing normal weeks vs abnormal weeks,
+    \item feature-level interpretation checks.
+\end{itemize}
+
+\subsection{Anomaly Detection Evaluation}
+
+Evaluation can include:
+
+\begin{itemize}
+    \item top anomaly inspection,
+    \item correlation with known holidays or events,
+    \item residual distribution analysis,
+    \item false-positive review.
+\end{itemize}
+
+\section{Dashboard Design Principles}
+
+The dashboard should prioritize clarity and visual impact.
+
+\subsection{Principles}
+
+\begin{itemize}
+    \item show status first, details second,
+    \item use maps for spatial intuition,
+    \item use timelines for drift and reliability,
+    \item use simple language for alerts,
+    \item explain why the system raised a warning,
+    \item make the advanced statistics visible but not overwhelming.
+\end{itemize}
+
+\subsection{Example Alert Copy}
+
+\begin{lstlisting}
+Warning: Current demand behavior differs from baseline.
+
+Main reasons:
+1. Evening demand increased in central zones.
+2. Airport trips dropped below expected levels.
+3. Forecast residuals are unusually large.
+
+Recommendation:
+Review recent demand patterns and consider model retraining if this persists.
+\end{lstlisting}
+
+\section{Business and Social Impact}
+
+\subsection{Business Impact}
+
+ShiftWatch can help organizations:
+
+\begin{itemize}
+    \item allocate drivers or vehicles more efficiently,
+    \item detect demand surges earlier,
+    \item reduce forecasting failures,
+    \item identify when models need retraining,
+    \item monitor operational risk,
+    \item improve trust in ML systems.
+\end{itemize}
+
+\subsection{Social Impact}
+
+For cities and public agencies, a similar system could help:
+
+\begin{itemize}
+    \item monitor mobility disruptions,
+    \item understand changes in commuting behavior,
+    \item identify underserved regions,
+    \item improve transportation planning,
+    \item support congestion analysis.
+\end{itemize}
+
+\section{How to Present This on GitHub}
+
+\subsection{README Structure}
+
+A strong README should include:
+
+\begin{enumerate}
+    \item Project title and one-liner.
+    \item Problem statement.
+    \item Dashboard screenshots or GIF.
+    \item Architecture diagram.
+    \item Data source description.
+    \item Methodology overview.
+    \item Key features.
+    \item How to run locally.
+    \item API documentation.
+    \item Results and limitations.
+    \item Future improvements.
+\end{enumerate}
+
+\subsection{README Opening Draft}
+
+\begin{quote}
+Modern machine learning systems are often trained under the assumption that future data will look like historical data. In real-world environments, this assumption frequently breaks: demand patterns shift, anomalies emerge, and predictive models silently degrade.
+
+ShiftWatch is an interactive ML reliability monitoring platform that detects distribution shift, demand anomalies, hidden regime changes, and model reliability risks in urban mobility data. It combines public mobility datasets, forecasting models, statistical drift metrics, regime detection, and interactive geospatial dashboards to help users understand when and why a forecasting model may become unreliable.
+\end{quote}
+
+\section{Resume Positioning}
+
+\subsection{General Resume Bullet}
+
+\begin{quote}
+Built \textbf{ShiftWatch}, a full-stack ML monitoring platform that detects distribution shift, demand anomalies, and model reliability risks in public urban mobility data using forecasting models, statistical drift metrics, and interactive geospatial dashboards.
+\end{quote}
+
+\subsection{Technical Resume Bullets}
+
+\begin{itemize}
+    \item Designed an end-to-end data pipeline from raw trip records to zone-level forecasting features, drift metrics, anomaly scores, and dashboard-ready model outputs.
+    \item Implemented statistical drift detection using Wasserstein distance, Jensen-Shannon divergence, KS tests, PSI, and feature-level distribution comparisons.
+    \item Developed demand forecasting and residual-based anomaly detection modules with uncertainty-aware reliability scoring.
+    \item Built a FastAPI backend and interactive dashboard for exploring forecasts, drift timelines, anomaly heatmaps, hidden regimes, and model reliability status.
+    \item Modeled urban mobility behavior as a time-indexed sequence of probability distributions and used statistical distance metrics to detect structural changes in demand behavior.
+\end{itemize}
+
+\section{Why This Project Is Strategically Strong}
+
+ShiftWatch is a strong resume project because it combines product thinking with advanced modeling.
+
+The front-facing product is simple:
+
+\begin{quote}
+    \textit{A dashboard that tells you when demand behavior changes and when your model may be unreliable.}
+\end{quote}
+
+The back-facing mathematical layer is sophisticated:
+
+\begin{quote}
+    \textit{Time-indexed probability distributions, optimal transport, statistical tests, sequential change detection, hidden regimes, and uncertainty-aware forecasting.}
+\end{quote}
+
+This combination is important. Recruiters can understand the product quickly, while technical reviewers can appreciate the depth underneath.
+
+\section{Potential Risks and Mitigations}
+
+\begin{longtable}{p{0.28\textwidth}p{0.62\textwidth}}
+\toprule
+\textbf{Risk} & \textbf{Mitigation} \\
+\midrule
+Data size too large & Start with one city, one year, or sampled monthly data. Use Parquet and Polars if needed. \\
+Dashboard too complex & Build MVP pages first: overview, forecast, drift, anomaly map. Add advanced pages later. \\
+Drift metrics hard to interpret & Add feature-level explanations and simple alert copy. \\
+No true live data & Simulate streaming using historical rolling windows. \\
+Model accuracy imperfect & Emphasize monitoring and reliability, not perfect prediction. \\
+Too much math for recruiters & Put math in methodology section; keep dashboard product-focused. \\
+\bottomrule
+\end{longtable}
+
+\section{Final Recommended Build Order}
+
+The best order is:
+
+\begin{enumerate}
+    \item Data ingestion and cleaning.
+    \item EDA and first visuals.
+    \item Aggregated demand dataset.
+    \item Baseline forecast model.
+    \item XGBoost or LightGBM forecast model.
+    \item Forecast residual anomaly score.
+    \item Drift detection metrics.
+    \item Reliability score.
+    \item FastAPI endpoints.
+    \item Streamlit dashboard MVP.
+    \item Geospatial maps.
+    \item HMM regime detection.
+    \item Latent space explorer.
+    \item Deployment and README polish.
+\end{enumerate}
+
+\section{Conclusion}
+
+ShiftWatch is a strong second flagship project after a trading algorithm project because it moves into a different but highly relevant area: production machine learning reliability. It demonstrates that the builder can work beyond pure modeling by designing data pipelines, APIs, dashboards, monitoring logic, and user-facing analytics.
+
+The project has the exact profile desired for a resume-oriented data science or tech project:
+
+\begin{itemize}
+    \item clear real-world problem,
+    \item public data,
+    \item strong visuals,
+    \item machine learning and statistics,
+    \item business and social impact,
+    \item full-stack system architecture,
+    \item advanced mathematical depth underneath.
+\end{itemize}
+
+The final message of the project is:
+
+\begin{quote}
+    \textit{Forecasting is not enough. Real-world ML systems also need to know when the world has changed. ShiftWatch monitors that change.}
+\end{quote}
+
+\end{document}
