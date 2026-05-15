@@ -5,12 +5,9 @@
 \usepackage{booktabs}
 \usepackage{longtable}
 \usepackage{array}
-\usepackage{enumitem}
 \usepackage{xcolor}
 \usepackage{hyperref}
-\usepackage{fancyhdr}
-\usepackage{titlesec}
-\usepackage{listings}
+\usepackage{verbatim}
 
 \hypersetup{
     colorlinks=true,
@@ -19,28 +16,15 @@
     citecolor=blue!60!black
 }
 
-\pagestyle{fancy}
-\fancyhf{}
-\lhead{ShiftWatch Project Plan}
-\rhead{ML Reliability and Distribution Shift Monitoring}
-\cfoot{\thepage}
+\pagestyle{plain}
 
 \setlength{\parskip}{0.6em}
 \setlength{\parindent}{0pt}
-\setlist[itemize]{topsep=0.2em, itemsep=0.25em}
-\setlist[enumerate]{topsep=0.2em, itemsep=0.25em}
+\setlength{\topsep}{0.2em}
+\setlength{\itemsep}{0.25em}
 
-\titleformat{\section}{\large\bfseries\color{blue!50!black}}{\thesection}{0.75em}{}
-\titleformat{\subsection}{\normalsize\bfseries\color{blue!35!black}}{\thesubsection}{0.75em}{}
-
-\lstdefinestyle{projectstyle}{
-    basicstyle=\ttfamily\small,
-    backgroundcolor=\color{gray!8},
-    frame=single,
-    breaklines=true,
-    columns=fullflexible
-}
-\lstset{style=projectstyle}
+\let\lstlisting\verbatim
+\let\endlstlisting\endverbatim
 
 \begin{document}
 
