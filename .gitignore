@@ -7,6 +7,9 @@
 *.synctex.gz
 *.toc
 
+# macOS Finder metadata
+.DS_Store
+
 # Keep the project plan source and final PDF
 !Plan/ShiftWatch_Project_Plan.tex
 !Plan/ShiftWatch_Project_Plan.pdf
