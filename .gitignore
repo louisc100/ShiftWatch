@@ -1,0 +1,12 @@
+# LaTeX build artifacts
+*.aux
+*.fdb_latexmk
+*.fls
+*.log
+*.out
+*.synctex.gz
+*.toc
+
+# Keep the project plan source and final PDF
+!Plan/ShiftWatch_Project_Plan.tex
+!Plan/ShiftWatch_Project_Plan.pdf
