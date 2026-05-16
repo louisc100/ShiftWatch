@@ -10,6 +10,21 @@
 # macOS Finder metadata
 .DS_Store
 
+# Python environments and caches
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# Local data files
+data/raw/*
+data/processed/*
+data/samples/*
+!data/raw/.gitkeep
+!data/processed/.gitkeep
+!data/samples/.gitkeep
+
 # Keep the project plan source and final PDF
 !Plan/ShiftWatch_Project_Plan.tex
 !Plan/ShiftWatch_Project_Plan.pdf
