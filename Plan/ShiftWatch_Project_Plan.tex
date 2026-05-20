@@ -273,10 +273,19 @@ Public Urban Mobility Data
     -> Cleaning and aggregation
     -> Zone-time feature engineering
     -> Forecasting, drift detection, anomaly detection, regime modeling
+    -> Optional PDE layer for spatial and distributional dynamics
     -> Reliability and alert engine
     -> FastAPI endpoints
     -> Interactive dashboard with maps, timelines, and alerts
 \end{lstlisting}
+
+The key design principle for the advanced version is:
+
+\begin{quote}
+    \textit{Data is not only a table of records. It can also be treated as a time-indexed sequence of probability distributions and spatial fields whose evolution can be modeled.}
+\end{quote}
+
+In the MVP, this principle appears through rolling distributions, drift metrics, and reliability scores. In the advanced version, a PDE layer adds spatial propagation, anomaly lifetime modeling, distributional forecasting, reliability flow, and retraining policy.
 
 \section{Core Features}
 
@@ -426,6 +435,22 @@ Possible explanation methods:
     \item zone-level drift heatmaps,
     \item cluster movement in latent space.
 \end{itemize}
+
+\subsection{Feature 7: PDE-Based Spatial and Distributional Dynamics}
+
+As an advanced layer, ShiftWatch can model city demand and reliability as evolving fields. This does not replace the MVP forecasting, drift, and anomaly modules. Instead, it consumes their outputs and produces richer time-aware and spatially-aware monitoring signals.
+
+Recommended PDE features:
+
+\begin{itemize}
+    \item graph heat equation for spatial demand and anomaly propagation,
+    \item reaction-diffusion model for anomaly cascade risk and recovery time,
+    \item Fokker-Planck distributional forecast for future demand distributions,
+    \item continuity equation for city-wide reliability flow,
+    \item Hamilton-Jacobi-Bellman optimal stopping model for retraining policy.
+\end{itemize}
+
+The first recommended PDE feature is the graph heat equation because it is practical, visual, and directly connected to the geospatial map.
 
 \section{Deep Mathematical and Statistical Layer}
 
@@ -594,6 +619,117 @@ where $\phi$ may be PCA, UMAP, an autoencoder, or a vector of summary statistics
 The dashboard can then visualize points $z_t$ in two dimensions. Normal days should cluster together. Holidays, disruptions, and event days should appear far from the normal cluster.
 
 This creates a visually compelling ``latent behavior map'' of the city.
+
+\section{Advanced PDE Layer}
+
+The PDE layer is an advanced extension that treats demand, anomalies, and reliability as evolving distributions or fields. It should be added after the MVP monitoring system is working, so that each PDE module improves an existing product feature rather than existing only as mathematical decoration.
+
+\subsection{Graph Heat Equation for Spatial Propagation}
+
+The most useful first PDE feature is spatial propagation on the taxi zone graph. Build an adjacency matrix $A$ from zone geometry, where zones are adjacent if they share a boundary. Let $D$ be the degree matrix and define the graph Laplacian:
+
+\[
+    L = D - A.
+\]
+
+If $u_i(t)$ is demand or anomaly intensity in zone $i$, the graph heat equation is:
+
+\[
+    \frac{du}{dt} = -\kappa L u,
+\]
+
+where $\kappa$ is a spatial diffusion coefficient estimated from historical demand movement. The solution can be approximated using sparse matrix methods:
+
+\begin{lstlisting}
+u_future = expm_multiply(-kappa * L * horizon, u_current)
+\end{lstlisting}
+
+Product outputs:
+
+\begin{itemize}
+    \item anomaly propagation preview: which neighboring zones may be affected next,
+    \item diffusion coefficient timeline: whether city-wide demand coupling is changing,
+    \item graph-aware smoothing for baseline demand maps.
+\end{itemize}
+
+\subsection{Reaction-Diffusion Anomaly Lifetime}
+
+Once residual-based anomaly scores exist, anomalies can be modeled as a field that spreads, decays, and receives new source terms:
+
+\[
+    \frac{\partial u}{\partial t} = D_{\mathrm{diff}}\nabla^2 u - \gamma u + s(x,t).
+\]
+
+On the zone graph, this becomes:
+
+\[
+    u_{t+1} = u_t + \Delta t(-D_{\mathrm{diff}} L u_t - \gamma u_t + s_t),
+\]
+
+where $s_t$ is derived from the current anomaly scores. This module can estimate:
+
+\begin{itemize}
+    \item anomaly lifetime or estimated time to recovery,
+    \item cascade risk for zones near active anomalies,
+    \item likely source zones for spreading disruptions.
+\end{itemize}
+
+\subsection{Fokker-Planck Distributional Forecast}
+
+The existing forecasting module predicts point demand or intervals. A Fokker-Planck extension forecasts the full demand distribution. If $p(x,t)$ is the density of demand level $x$ at time $t$, then:
+
+\[
+    \frac{\partial p}{\partial t}
+    =
+    -\frac{\partial}{\partial x}(\mu(x,t)p)
+    + \frac{1}{2}\frac{\partial^2}{\partial x^2}(\sigma^2(x,t)p).
+\]
+
+Here $\mu(x,t)$ is an estimated local drift in demand level and $\sigma(x,t)$ is an estimated local diffusion or volatility. The dashboard can compare the predicted distribution $P_{t+h}^{\mathrm{FP}}$ with the observed distribution $P_{t+h}$ using Wasserstein distance:
+
+\[
+    W_1(P_{t+h}^{\mathrm{FP}}, P_{t+h}).
+\]
+
+This is best treated as a research extension because it requires careful density estimation, boundary conditions, normalization, and numerical stability.
+
+\subsection{Continuity Equation for Reliability Flow}
+
+For each zone, ShiftWatch estimates a reliability score $R_t \in [0,100]$. Across the city, these scores form a reliability distribution $\rho(R,t)$. A continuity equation can describe how reliability mass moves:
+
+\[
+    \frac{\partial \rho}{\partial t}
+    + \frac{\partial}{\partial R}(v(R,t)\rho) = 0,
+\]
+
+where $v(R,t)$ is the velocity of reliability change:
+
+\[
+    v(R,t) \approx \mathbb{E}[R_{t+1} - R_t \mid R_t \approx R].
+\]
+
+If most of the velocity field points toward lower reliability, the system can raise a city-level early warning before many individual zones cross alert thresholds.
+
+\subsection{HJB Optimal Retraining Policy}
+
+The most advanced PDE extension is a retraining decision layer. Let $V(R,t)$ be the value of waiting or retraining when the current reliability is $R$. A Hamilton-Jacobi-Bellman optimal stopping model can define a retraining boundary $R^*(t)$:
+
+\[
+    \min\left\{
+    -\frac{\partial V}{\partial t}
+    - \mu_R \frac{\partial V}{\partial R}
+    - \frac{\sigma_R^2}{2}\frac{\partial^2 V}{\partial R^2},
+    V - (V_{\mathrm{after}} - c_{\mathrm{retrain}})
+    \right\} = 0.
+\]
+
+Interpretation:
+
+\begin{quote}
+    Retrain when the current reliability falls below the optimal boundary $R^*(t)$, balancing the cost of waiting against the cost of retraining.
+\end{quote}
+
+This feature should come last because it depends on a calibrated reliability process and a meaningful cost model.
 
 \section{Data Pipeline}
 
@@ -877,6 +1013,14 @@ Visuals:
 
 This is one of the most important pages because it makes the project visually impressive.
 
+Advanced PDE mode:
+
+\begin{itemize}
+    \item graph heat equation propagation preview,
+    \item animated map showing where a demand surge or anomaly may spread,
+    \item diffusion coefficient timeline showing whether spatial demand coupling is changing.
+\end{itemize}
+
 \subsection{Page 5: Anomaly Detection}
 
 Visuals:
@@ -886,6 +1030,14 @@ Visuals:
     \item ranked anomaly table,
     \item observed vs expected demand,
     \item zone-level anomaly heatmap.
+\end{itemize}
+
+Advanced PDE mode:
+
+\begin{itemize}
+    \item reaction-diffusion cascade risk by zone,
+    \item estimated time to recovery for active anomalies,
+    \item likely source zone for spreading disruptions.
 \end{itemize}
 
 \subsection{Page 6: Regime Detection}
@@ -916,6 +1068,19 @@ Interpretation:
     Normal weekdays cluster together. Holidays, disruptions, and event days appear as separate regions in latent space.
 \end{quote}
 
+\subsection{Page 8: PDE Dynamics Explorer}
+
+This is an advanced page, not an MVP requirement. It exposes the mathematical layer in a product-friendly way.
+
+Visuals:
+
+\begin{itemize}
+    \item spatial diffusion animation on the taxi zone map,
+    \item predicted vs observed demand distribution curves,
+    \item reliability distribution histogram with flow arrows,
+    \item retraining boundary visualization for the HJB policy.
+\end{itemize}
+
 \section{Technology Stack}
 
 \subsection{Core Stack}
@@ -928,6 +1093,7 @@ Data processing & Python, Pandas, Polars, NumPy \\
 Modeling & scikit-learn, XGBoost, LightGBM, statsmodels \\
 Drift detection & SciPy, POT, custom metrics \\
 Regime modeling & hmmlearn, scikit-learn, custom HMM implementation \\
+PDE layer & SciPy sparse matrices, graph Laplacians, finite differences, custom PDE solvers \\
 Backend & FastAPI, Pydantic, Uvicorn \\
 Dashboard & Streamlit, Plotly, or React + Plotly \\
 Database & SQLite for MVP, PostgreSQL for advanced version \\
@@ -976,6 +1142,13 @@ shiftwatch/
 |   |   |-- anomaly.py
 |   |   |-- drift.py
 |   |   |-- regime.py
+|   |-- pde/
+|   |   |-- graph_laplacian.py
+|   |   |-- heat_diffusion.py
+|   |   |-- reaction_diffusion.py
+|   |   |-- fokker_planck.py
+|   |   |-- reliability_flow.py
+|   |   |-- optimal_retraining.py
 |   |-- engine/
 |   |   |-- monitoring_engine.py
 |   |-- utils/
@@ -1079,6 +1252,20 @@ Deliverables:
     \item anomaly heatmap.
 \end{itemize}
 
+\subsection{Phase 5.5: PDE Spatial Propagation}
+
+This is the first recommended PDE milestone because it is visually clear and directly improves the geospatial monitoring product.
+
+Deliverables:
+
+\begin{itemize}
+    \item taxi zone adjacency graph,
+    \item graph Laplacian construction,
+    \item heat equation propagation model,
+    \item anomaly propagation preview,
+    \item diffusion coefficient timeline.
+\end{itemize}
+
 \subsection{Phase 6: Reliability Engine}
 
 Deliverables:
@@ -1088,6 +1275,18 @@ Deliverables:
     \item stable/warning/critical classification,
     \item explanation rules,
     \item summary JSON output.
+\end{itemize}
+
+\subsection{Phase 6.5: PDE Anomaly and Reliability Dynamics}
+
+Deliverables:
+
+\begin{itemize}
+    \item reaction-diffusion anomaly cascade scores,
+    \item estimated anomaly recovery time,
+    \item reliability distribution over zones,
+    \item continuity-equation reliability flow signal,
+    \item city-level early warning indicator.
 \end{itemize}
 
 \subsection{Phase 7: FastAPI Backend}
@@ -1126,6 +1325,18 @@ Deliverables:
     \item drift explanation panel.
 \end{itemize}
 
+\subsection{Phase 9.5: Advanced PDE Decision Layer}
+
+Deliverables:
+
+\begin{itemize}
+    \item Fokker-Planck distributional forecast prototype,
+    \item predicted vs observed distribution comparison,
+    \item Wasserstein distance against PDE forecast,
+    \item HJB retraining policy prototype,
+    \item retraining boundary visualization.
+\end{itemize}
+
 \subsection{Phase 10: Deployment and Polish}
 
 Deliverables:
@@ -1159,11 +1370,18 @@ The MVP should include:
 
 This version is already resume-worthy.
 
+The PDE modules are intentionally excluded from the MVP. They should be introduced after the standard monitoring workflow is reliable, because the first goal is to ship a clear end-to-end product.
+
 \section{Advanced Extensions}
 
 After the MVP, possible extensions include:
 
 \begin{itemize}
+    \item graph heat equation spatial propagation,
+    \item reaction-diffusion anomaly lifetime and cascade risk,
+    \item Fokker-Planck distributional forecasting,
+    \item continuity-equation reliability flow,
+    \item HJB optimal retraining policy,
     \item HMM-based hidden regime detection,
     \item Bayesian uncertainty intervals,
     \item online change point detection,
@@ -1200,6 +1418,18 @@ Evaluation can include:
     \item synthetic drift injection,
     \item comparing normal weeks vs abnormal weeks,
     \item feature-level interpretation checks.
+\end{itemize}
+
+\subsection{PDE Layer Evaluation}
+
+Evaluation can include:
+
+\begin{itemize}
+    \item whether heat-equation propagation improves prediction of neighboring-zone anomalies,
+    \item calibration of anomaly lifetime estimates against observed recovery times,
+    \item Wasserstein distance between Fokker-Planck predicted distributions and observed distributions,
+    \item whether reliability flow detects warning periods before threshold-based alerts,
+    \item sensitivity of PDE outputs to diffusion, decay, and boundary-condition assumptions.
 \end{itemize}
 
 \subsection{Anomaly Detection Evaluation}
@@ -1328,7 +1558,7 @@ The front-facing product is simple:
 The back-facing mathematical layer is sophisticated:
 
 \begin{quote}
-    \textit{Time-indexed probability distributions, optimal transport, statistical tests, sequential change detection, hidden regimes, and uncertainty-aware forecasting.}
+    \textit{Time-indexed probability distributions, optimal transport, statistical tests, sequential change detection, hidden regimes, uncertainty-aware forecasting, and PDE-based spatial and distributional dynamics.}
 \end{quote}
 
 This combination is important. Recruiters can understand the product quickly, while technical reviewers can appreciate the depth underneath.
@@ -1342,6 +1572,7 @@ This combination is important. Recruiters can understand the product quickly, wh
 Data size too large & Start with one city, one year, or sampled monthly data. Use Parquet and Polars if needed. \\
 Dashboard too complex & Build MVP pages first: overview, forecast, drift, anomaly map. Add advanced pages later. \\
 Drift metrics hard to interpret & Add feature-level explanations and simple alert copy. \\
+PDE layer feels overengineered & Keep PDEs out of the MVP. Add heat diffusion first because it improves the map and has a clear interpretation. \\
 No true live data & Simulate streaming using historical rolling windows. \\
 Model accuracy imperfect & Emphasize monitoring and reliability, not perfect prediction. \\
 Too much math for recruiters & Put math in methodology section; keep dashboard product-focused. \\
@@ -1364,8 +1595,13 @@ The best order is:
     \item FastAPI endpoints.
     \item Streamlit dashboard MVP.
     \item Geospatial maps.
+    \item Graph heat equation spatial propagation.
+    \item Reaction-diffusion anomaly cascade scores.
+    \item Reliability flow early warning signal.
     \item HMM regime detection.
     \item Latent space explorer.
+    \item Fokker-Planck distributional forecast prototype.
+    \item HJB retraining policy prototype.
     \item Deployment and README polish.
 \end{enumerate}
 
@@ -1382,7 +1618,8 @@ The project has the exact profile desired for a resume-oriented data science or 
     \item machine learning and statistics,
     \item business and social impact,
     \item full-stack system architecture,
-    \item advanced mathematical depth underneath.
+    \item advanced mathematical depth underneath,
+    \item optional PDE layer for spatial propagation and distributional dynamics.
 \end{itemize}
 
 The final message of the project is:
